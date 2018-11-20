@@ -34,8 +34,11 @@ jobs:
           name: Run migration
           command: php bin/console doctrine:migrations:migrate --env=test --no-interaction
       - run:
+          name: chmod permissions
+          command: chmod +x ./bin/phpunit
+      - run:
           name: Run tests
-          command: ./vendor/bin/simple-phpunit
+          command: ./bin/phpunit
   deploy:
     working_directory: ~/micropost
     docker:
