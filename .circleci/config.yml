@@ -33,8 +33,6 @@ jobs:
       - run:
           name: Run migration
           command: php bin/console doctrine:migrations:migrate --env=test --no-interaction
-      - run: ./vendor/bin/codecept build
-      - run: ./vendor/bin/codecept run
   deploy:
     working_directory: ~/micropost
     docker:
