@@ -3,74 +3,44 @@ jobs:
   build:
     working_directory: ~/micropost
     docker:
-      - image: circleci/php:7.2.4-apache-stretch-node-browsers
-        environment:
-          APP_ENV: test
-          DATABASE_URL: mysql://root:@127.0.0.1:3306/micropost
-          MAILER_FROM: micro@micropost.com
-          MAILER_URL: null://localhost
-      - image: circleci/mysql:5.7
-        environment:
-          MYSQL_ROOT_PASSWORD: ''
-          MYSQL_DATABASE: micropost
+    - image: circleci/php:7.2.4-apache-stretch-node-browsers
+      environment:
+        APP_ENV: test
+        DATABASE_URL: mysql://root:root@127.0.0.1/micro-post
+        MAILER_FORM: micro@micropost.com
+        MAILER_URL: null://localhost
+    - image: circleci/mysql:5.7
+      environment:
+        MYSQL_ROOT_PASSWORD: 'root'
+        MYSQL_DATABASE: micro-post
     steps:
-      - checkout
-      - run:
-          name: Install apt
-          command: sudo apt-get install -y zlib1g-dev
-      - run:
-          name: Install PHP MySQL
-          command: sudo docker-php-ext-install pdo_mysql zip
-      - run:
-          name: Wait for MySQL
-          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 120s
-      - run:
-          name: Composer
-          command: sudo composer self-update
-      - run:
-          name: Composer install
-          command: composer install -n --prefer-dist
-      - run:
-          name: Run migration
-          command: php bin/console doctrine:migrations:migrate --env=test --no-interaction
+    - checkout
+    - run: sudo docker-php-ext-install pdo_mysql
+    - run: dockerize -wait tcp://127.0.0.1:3306 -timeout 120s
+    - run: sudo composer self-update
+    - run: composer install -n --prefer-dist
+    - run: php bin/console doctrine:migrations:migrate --env=test --no-interaction
   deploy:
-    working_directory: ~/micropost
     docker:
     - image: circleci/php:7.2.4-apache-stretch-node-browsers
+    working_directory: ~/micropost
     steps:
-      - checkout
-      - run:
-          name: Composer install
-          command: composer install -n --prefer-dist
-      - run:
-          name: Clear cache
-          command: php bin/console cache:clear --env=prod --no-interaction
-      - run:
-          name: Cache warmup
-          command: php bon/console cache:warmup --env=prod --no-interaction
-      - run:
-          name: Yarn
-          command: yarn install && yarn run encore production
-      - run:
-          name: Add droplet
-          command: ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts
-      - run:
-          name: Pre-deploy
-          command: ssh -T $DROPLET_USER:$DROPLET_IP < bin/deploy/pre_deploy.sh
-      - run:
-          name: Deploy code
-          command: rsync -vzcrSLhp --exclude '/env' --delete ~/micropost/ $DROPLET_USER@$DROPLET_IP:/var/www/micropost_current/
-      - run:
-          name: Post-deploy
-          command: ssh -T $DROPLET_USER:$DROPLET_IP < bin/deploy/deploy.sh
+    - checkout
+    - run: composer install -n --prefer-dist
+    - run: php bin/console cache:clear --env=prod --no-interaction
+    - run: yarn install && yarn run encore production
+    - run: ssh-keyscan -H 206.189.19.93 >> ~/.ssh/known_hosts
+    - run: ssh -T $DROPLET_USER@$DROPLET_IP < bin/deploy/pre_deploy.sh
+    - run: rsync -vzcrSLhp --exclude '.env' --delete ~/micropost/ $DROPLET_USER@$DROPLET_IP:/var/www/micropost_current
+    - run: ssh -T $DROPLET_USER@$DROPLET_IP < bin/deploy/deploy.sh
 workflows:
   version: 2
   build-and-deploy:
     jobs:
-      - build
-      - deploy:
-          requires:
-            - build
-          filters:
-            branches:
-              only: master
+    - build
+    - deploy:
+        requires:
+        - build
+        filters:
+          branches:
+            only: master
